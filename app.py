@@ -1,5 +1,6 @@
 import streamlit as st
 import pickle
+import gzip
 import pandas as pd
 import requests
 
@@ -11,8 +12,6 @@ def fetch_poster(movie_id):
 
         response = requests.get(url, timeout=10)
         data = response.json()
-
-        print(movie_id, data)
 
         poster_path = data.get("poster_path")
 
@@ -59,7 +58,9 @@ def recommend(movie):
 movies_dict = pickle.load(open("movies.pkl", "rb"))
 movies = pd.DataFrame(movies_dict)
 
-similarity = pickle.load(open("similarity.pkl", "rb"))
+with gzip.open("similarity.pkl.gz", "rb") as f:
+    similarity = pickle.load(f)
+
 
 st.title("Movie Recommender System")
 
