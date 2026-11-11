@@ -1,81 +1,57 @@
-import streamlit as st
-import pickle
-import gzip
+import os
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
 import pandas as pd
 import requests
+import streamlit as st
 
-API_KEY = "d9046203f374ef683edc6a3c7b9e7ebd"
+API_KEY = os.environ.get("TMDB_API_KEY")
+PLACEHOLDER = "https://placehold.co/500x750?text=No+Image"
 
+
+@st.cache_resource
+def load_data():
+    movies = pd.read_pickle("movies.pkl")
+    nb = np.load("neighbors.npz")
+    return movies, nb["idx"], nb["score"]
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
 def fetch_poster(movie_id):
+    if not API_KEY:
+        return PLACEHOLDER
     try:
-        url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={API_KEY}&language=en-US"
-
-        response = requests.get(url, timeout=10)
-        data = response.json()
-
-        poster_path = data.get("poster_path")
-
-        if poster_path:
-            return "https://image.tmdb.org/t/p/w500/" + poster_path
-        else:
-            return "https://via.placeholder.com/500x750?text=No+Image"
-
-    except Exception as e:
-        print("Poster error:", e)
-        return "https://via.placeholder.com/500x750?text=No+Image"
+        r = requests.get(
+            f"https://api.themoviedb.org/3/movie/{movie_id}",
+            params={"api_key": API_KEY, "language": "en-US"},
+            timeout=5,
+        )
+        r.raise_for_status()
+        path = r.json().get("poster_path")
+        return f"https://image.tmdb.org/t/p/w500{path}" if path else PLACEHOLDER
+    except requests.RequestException:
+        return PLACEHOLDER
 
 
-def recommend(movie):
-    movie_index = movies[movies["title"] == movie].index[0]
-    distances = similarity[movie_index]
-
-    movies_list = sorted(
-        list(enumerate(distances)),
-        reverse=True,
-        key=lambda x: x[1]
-    )[1:6]
-
-    recommended_movies = []
-    recommended_posters = []
-
-    for i in movies_list:
-        row = movies.iloc[i[0]]
-
-        if "movie_id" in movies.columns:
-            movie_id = row["movie_id"]
-        elif "id" in movies.columns:
-            movie_id = row["id"]
-        else:
-            st.error("No movie_id or id column found in movies.pkl")
-            return [], []
-
-        recommended_movies.append(row["title"])
-        recommended_posters.append(fetch_poster(movie_id))
-
-    return recommended_movies, recommended_posters
+def recommend(title, n=5):
+    i = movies.index[movies["title"] == title][0]
+    top = neighbor_idx[i][:n]
+    rows = movies.iloc[top]
+    with ThreadPoolExecutor(max_workers=n) as ex:
+        posters = list(ex.map(fetch_poster, rows["movie_id"].tolist()))
+    return rows["title"].tolist(), posters, neighbor_score[i][:n]
 
 
-movies_dict = pickle.load(open("movies.pkl", "rb"))
-movies = pd.DataFrame(movies_dict)
-
-with gzip.open("similarity.pkl.gz", "rb") as f:
-    similarity = pickle.load(f)
-
+movies, neighbor_idx, neighbor_score = load_data()
 
 st.title("Movie Recommender System")
-
-selected_movie_name = st.selectbox(
-    "Select a movie",
-    movies["title"].values
-)
+selected = st.selectbox("Select a movie", movies["title"].values)
 
 if st.button("Recommend"):
-    names, posters = recommend(selected_movie_name)
-
-    if len(names) == 5:
-        cols = st.columns(5)
-
-        for index, col in enumerate(cols):
-            with col:
-                st.text(names[index])
-                st.image(posters[index])
+    names, posters, scores = recommend(selected)
+    for col, name, poster, sc in zip(st.columns(len(names)), names, posters, scores):
+        with col:
+            st.text(name)
+            st.image(poster)
+            st.caption(f"content match: {sc:.0%}")
