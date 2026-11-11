@@ -1,8 +1,4 @@
-streamlit
-pandas
-numpy
-scikit-learn
-requests
-nltk
-# only for build_model.py --embeddings (not needed to run the app):
-# sentence-transformers
+streamlit==1.60.0
+pandas==3.0.5
+numpy==2.4.6
+requests==2.34.2

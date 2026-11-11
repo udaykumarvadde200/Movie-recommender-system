@@ -1,4 +1,4 @@
-# Movie Recommender System
+﻿# Movie Recommender System
 
 A content-based movie recommender built on the TMDB 5000 dataset. It compares three feature
 approaches (bag-of-words, TF-IDF, sentence embeddings), blends the two best into a hybrid,
@@ -71,7 +71,7 @@ without changing the genre metrics.
 ## Run it
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-build.txt
 
 # Download "TMDB 5000 Movie Dataset" from Kaggle into data/
 python build_model.py --movies data/tmdb_5000_movies.csv --credits data/tmdb_5000_credits.csv --embeddings
