@@ -4,8 +4,10 @@ A content-based movie recommender built on the TMDB 5000 dataset. It compares th
 approaches (bag-of-words, TF-IDF, sentence embeddings), blends the two best into a hybrid,
 re-ranks by popularity, and serves recommendations through a Streamlit app.
 
-> Screenshot: _add `screenshot.png` here_  
-> Live demo: _add link after deploying_
+**Live demo:** https://movie-recommender-system-zimy.onrender.com  
+_(Free hosting: the first load after inactivity can take about a minute.)_
+
+![App screenshot](screenshot.png)
 
 ## How it works
 
