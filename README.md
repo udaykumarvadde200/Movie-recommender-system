@@ -66,7 +66,7 @@ without changing the genre metrics.
 
 - **The metric is partly circular.** Genres are part of the tags that `count` and `tfidf` are built from,
   so genre-based scores favour them. Embeddings score lower on it but look better on some movies by eye.
-  An independent evaluation needs real user ratings (planned, see below).
+  An independent evaluation needs real user ratings (see the MovieLens section below).
 - Content-based only: no user history, no personalisation, and the dataset (about 4,800 movies) stops around 2017.
 - Some weak matches remain (for example *Titanic* returns *Raise the Titanic*).
 
@@ -103,12 +103,30 @@ movies.pkl         Movie metadata (id, title, genres, overview, tags)
 neighbors.npz      Precomputed top-20 neighbours per movie
 ```
 
-## Planned
+## Collaborative filtering on MovieLens
 
-- MovieLens collaborative filtering and a hybrid with the content model
-- Evaluation on held-out user ratings instead of genre overlap
+Ratings from MovieLens (small, 100k ratings) were linked to the catalogue through TMDB ids:
+3,535 of 4,800 movies matched, giving 607 users and 70k ratings. Each user's latest 20% of ratings
+were held out; "liked" means a rating of 4 or more. Top-10 recommendations per user:
+
+| Model | Precision@10 | Recall@10 | NDCG@10 | Coverage |
+|---|---|---|---|---|
+| popularity baseline | 0.0588 | 0.0681 | 0.0842 | 0.019 |
+| content (hybrid) | 0.0044 | 0.0079 | 0.0082 | 0.156 |
+| item-item CF | 0.0886 | 0.1080 | 0.1198 | 0.046 |
+| blend (0.75 CF + 0.25 content) | 0.0882 | 0.1105 | 0.1233 | 0.054 |
+
+- Item-item CF beats the popularity baseline by about 51% in Precision@10 and 42% in NDCG@10.
+- Content similarity alone ranks poorly on this task: it has no popularity signal, so it favours
+  obscure titles, while held-out ratings concentrate on well-known ones. It is designed for
+  "similar to this movie" queries and for the 26% of movies with no ratings, where CF cannot recommend.
+- The 0.75 blend is within noise of pure CF (587 evaluated users), so no improvement is claimed.
+- Limitations: small user base, temporal split per user, results are popularity-biased.
+
+Run: `python cf_prepare.py --ml-dir data/movielens`, then `python cf_evaluate.py`.
 
 ## Data
 
 TMDB 5000 Movie Dataset (Kaggle). Posters and metadata via the TMDB API.
 This product uses the TMDB API but is not endorsed or certified by TMDB.
+
